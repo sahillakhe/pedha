@@ -1,12 +1,11 @@
 import streamlit as st
-import json
+from modules.document_upload import langchain_document_loader
+import tempfile
 from datetime import datetime
-import re
 
 def create_form(data):
     with st.form("resume_form"):
         st.subheader("Personal Information")
-        # Convert birth date to datetime.date object
         birth_date = datetime.strptime(data["personalInformation"]["birth_date"], "%Y-%m-%d").date()
         first_name = st.text_input("First Name", value=data["personalInformation"]["first_name"], key="first_name")
         last_name = st.text_input("Last Name", value=data["personalInformation"]["last_name"], key="last_name")
@@ -51,7 +50,7 @@ def create_form(data):
         education = []
         for i, edu in enumerate(data["education"]):
             st.write(f"Education {i+1}")
-            end_date = datetime.strptime(edu["end_date"], "%Y-%m-%d").date()  # Convert to date
+            end_date = datetime.strptime(edu["end_date"], "%Y-%m-%d").date()
             institution = st.text_input(f"Institution {i+1}", value=edu["institution"], key=f"institution_{i}")
             end_date = st.date_input(f"End Date {i+1}", value=end_date, key=f"edu_end_date_{i}")
             country = st.text_input(f"Country {i+1}", value=edu["location"]["country"], key=f"edu_country_{i}")
@@ -87,7 +86,7 @@ def create_form(data):
         courses = []
         for i, course in enumerate(data["courses"]):
             st.write(f"Course {i+1}")
-            end_date = datetime.strptime(course["end_date"], "%Y-%m-%d").date()  # Convert to date
+            end_date = datetime.strptime(course["end_date"], "%Y-%m-%d").date()
             institution = st.text_input(f"Institution {i+1}", value=course["institution"], key=f"course_institution_{i}")
             end_date = st.date_input(f"End Date {i+1}", value=end_date, key=f"course_end_date_{i}")
             title = st.text_input(f"Title {i+1}", value=course["title"], key=f"course_title_{i}")
@@ -164,12 +163,27 @@ st.title("Resume Converter")
 
 # Resume Conversion and Database Storage
 st.header("Resume Conversion and Database Storage")
-resume_uploaded = st.file_uploader("Upload a Resume", type=["pdf", "docx"])
+
+# Resume Upload Section
+resume_uploaded = st.file_uploader("Upload a Resume (PDF only)", type=["pdf"])
 if resume_uploaded:
-    st.success("Resume uploaded successfully!")
-    st.write("The resume will be converted into the recruiting company's CV template and stored in the database.")
+    # Using a temporary file to store the uploaded file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        tmp_file.write(resume_uploaded.read())
+        file_path = tmp_file.name
     
-    # Simulating the backend process of entity recognition
+    # Load and process the document using Langchain's PDFMinerLoader
+    documents = langchain_document_loader(file_path)
+    
+    if documents:
+        st.write("Extracted documents:")
+        for i, doc in enumerate(documents):
+            st.write(f"Document {i+1}:")
+            st.text_area(f"Content {i+1}", value=doc.page_content, height=150)
+            st.write(doc.metadata)
+    
+    st.write("You can now edit the extracted information in the form below:")
+    # Dummy data for the form based on extracted content
     sample_json = {
         "personalInformation": {"first_name": "John", "last_name": "Doe", "job_title": "Software Engineer", "birth_date": "1990-01-01"},
         "contact": {"phone": "+1234567890", "email": "john.doe@example.com", "github": "github.com/johndoe", "linkedin": "linkedin.com/in/johndoe"},
@@ -202,9 +216,4 @@ if resume_uploaded:
         "courses": [{"institution": "Coursera", "end_date": "2020-12-15", "title": "Machine Learning"}],
         "languages": [{"name": "English", "proficiency": "Native"}, {"name": "Spanish", "proficiency": "Intermediate"}]
     }
-    
-    st.write("Extracted information:")
-    st.json(sample_json)
-    
-    st.write("You can now edit the extracted information in the form below:")
     create_form(sample_json)
