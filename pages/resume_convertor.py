@@ -1,219 +1,121 @@
 import streamlit as st
+import os
+import uuid
+from PyPDF2 import PdfReader
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
 from modules.document_upload import langchain_document_loader
-import tempfile
-from datetime import datetime
+from dotenv import load_dotenv, find_dotenv
 
-def create_form(data):
-    with st.form("resume_form"):
-        st.subheader("Personal Information")
-        birth_date = datetime.strptime(data["personalInformation"]["birth_date"], "%Y-%m-%d").date()
-        first_name = st.text_input("First Name", value=data["personalInformation"]["first_name"], key="first_name")
-        last_name = st.text_input("Last Name", value=data["personalInformation"]["last_name"], key="last_name")
-        job_title = st.text_input("Job Title", value=data["personalInformation"]["job_title"], key="job_title")
-        birth_date = st.date_input("Birth Date", value=birth_date, key="birth_date")
+# Load API keys from the .env file
+load_dotenv(find_dotenv('/Users/sahillakhe/repositories/secrets/keys.env', usecwd=True))
+openai_api_key = os.getenv("api_key_openai")
 
-        st.subheader("Contact")
-        phone = st.text_input("Phone", value=data["contact"]["phone"], key="phone")
-        email = st.text_input("Email", value=data["contact"]["email"], key="email")
-        github = st.text_input("GitHub", value=data["contact"]["github"], key="github")
-        linkedin = st.text_input("LinkedIn", value=data["contact"]["linkedin"], key="linkedin")
+# Ensure the OpenAI API key is available
+if not openai_api_key:
+    st.error("OpenAI API Key is not set. Please configure it on the homepage.")
+    st.stop()
 
-        st.subheader("About")
-        summary = st.text_area("Summary", value=data["about"]["summary"], key="summary")
-        skill_tags = st.multiselect("Skill Tags", options=data["about"]["skill_tags"], default=data["about"]["skill_tags"], key="skill_tags")
+def select_embeddings_model(LLM_service="OpenAI"):
+    """Connect to the embeddings API endpoint."""
+    if LLM_service == "OpenAI":
+        embeddings = OpenAIEmbeddings(
+            model='text-embedding-3-large',
+            api_key=openai_api_key)
+    return embeddings
 
-        st.subheader("Work Experience")
-        work_experience = []
-        for i, exp in enumerate(data["work_experience"]):
-            st.write(f"Experience {i+1}")
-            company = st.text_input(f"Company {i+1}", value=exp["company"], key=f"company_{i}")
-            country = st.text_input(f"Country {i+1}", value=exp["location"]["country"], key=f"country_{i}")
-            city = st.text_input(f"City {i+1}", value=exp["location"]["city"], key=f"city_{i}")
-            position = st.text_input(f"Position {i+1}", value=exp["position"], key=f"position_{i}")
-            start_date = st.text_input(f"Start Date {i+1}", value=exp["start_date"], key=f"start_date_{i}")
-            end_date = st.text_input(f"End Date {i+1}", value=exp["end_date"], key=f"end_date_{i}")
-            achievements = st.text_area(f"Achievements {i+1}", value="\n".join(exp["achievements"]), key=f"achievements_{i}")
-            role_description = st.text_area(f"Role Description {i+1}", value=exp["role_description"], key=f"role_description_{i}")
-            tools = st.multiselect(f"Tools {i+1}", options=exp["tools"], default=exp["tools"], key=f"tools_{i}")
-            work_experience.append({
-                "company": company,
-                "location": {"country": country, "city": city},
-                "position": position,
-                "start_date": start_date,
-                "end_date": end_date,
-                "achievements": achievements.split("\n"),
-                "role_description": role_description,
-                "tools": tools
-            })
+def create_vectorstore(embeddings, documents):
+    """Create a Faiss vector database."""
+    vector_store = FAISS.from_documents(documents=documents, embedding=embeddings)
+    return vector_store
 
-        st.subheader("Education")
-        education = []
-        for i, edu in enumerate(data["education"]):
-            st.write(f"Education {i+1}")
-            end_date = datetime.strptime(edu["end_date"], "%Y-%m-%d").date()
-            institution = st.text_input(f"Institution {i+1}", value=edu["institution"], key=f"institution_{i}")
-            end_date = st.date_input(f"End Date {i+1}", value=end_date, key=f"edu_end_date_{i}")
-            country = st.text_input(f"Country {i+1}", value=edu["location"]["country"], key=f"edu_country_{i}")
-            city = st.text_input(f"City {i+1}", value=edu["location"]["city"], key=f"edu_city_{i}")
-            program = st.text_input(f"Program {i+1}", value=edu["program"], key=f"program_{i}")
-            education.append({
-                "institution": institution,
-                "end_date": end_date.strftime("%Y-%m-%d"),
-                "location": {"country": country, "city": city},
-                "program": program
-            })
-
-        st.subheader("Expertise")
-        experience = []
-        for i, exp in enumerate(data["expertise"]["experience"]):
-            name = st.text_input(f"Experience {i+1}: {exp['name']}", key=f"exp_name_{i}")
-            proficiency = st.text_input(f"Proficiency {i+1}: {exp['name']}", value=exp["proficiency"], key=f"exp_proficiency_{i}")
-            experience.append({"name": name, "proficiency": proficiency})
-
-        programming_language = []
-        for i, lang in enumerate(data["expertise"]["programming_language"]):
-            name = st.text_input(f"Programming Language {i+1}: {lang['name']}", key=f"prog_lang_name_{i}")
-            proficiency = st.text_input(f"Proficiency {i+1}: {lang['name']}", value=lang["proficiency"], key=f"prog_lang_proficiency_{i}")
-            programming_language.append({"name": name, "proficiency": proficiency})
-
-        development_tools = []
-        for i, tool in enumerate(data["expertise"]["development_tools"]):
-            name = st.text_input(f"Development Tool {i+1}: {tool['name']}", key=f"dev_tool_name_{i}")
-            proficiency = st.text_input(f"Proficiency {i+1}: {tool['name']}", value=tool["proficiency"], key=f"dev_tool_proficiency_{i}")
-            development_tools.append({"name": name, "proficiency": proficiency})
-
-        st.subheader("Courses")
-        courses = []
-        for i, course in enumerate(data["courses"]):
-            st.write(f"Course {i+1}")
-            end_date = datetime.strptime(course["end_date"], "%Y-%m-%d").date()
-            institution = st.text_input(f"Institution {i+1}", value=course["institution"], key=f"course_institution_{i}")
-            end_date = st.date_input(f"End Date {i+1}", value=end_date, key=f"course_end_date_{i}")
-            title = st.text_input(f"Title {i+1}", value=course["title"], key=f"course_title_{i}")
-            courses.append({
-                "institution": institution,
-                "end_date": end_date.strftime("%Y-%m-%d"),
-                "title": title
-            })
-
-        st.subheader("Languages")
-        languages = []
-        for i, lang in enumerate(data["languages"]):
-            st.write(f"Language {i+1}")
-            name = st.text_input(f"Language {i+1}", value=lang["name"], key=f"lang_name_{i}")
-            proficiency = st.text_input(f"Proficiency {i+1}", value=lang["proficiency"], key=f"lang_proficiency_{i}")
-            languages.append({"name": name, "proficiency": proficiency})
-        
-        # Submit button inside the form
-        submit_button = st.form_submit_button("Save Changes")
-        
-        # Validation
-        errors = []
-
-        if submit_button:
-            # Basic validations
-            if not first_name:
-                errors.append("First Name is required.")
-            if not last_name:
-                errors.append("Last Name is required.")
-            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                errors.append("Invalid email format.")
-            if len(phone) < 10:
-                errors.append("Phone number should be at least 10 characters long.")
-            if not skill_tags:
-                errors.append("At least one skill tag is required.")
-            
-            # Check for errors
-            if errors:
-                for error in errors:
-                    st.error(error)
-            else:
-                updated_data = {
-                    "personalInformation": {
-                        "first_name": first_name,
-                        "last_name": last_name,
-                        "job_title": job_title,
-                        "birth_date": birth_date.strftime("%Y-%m-%d")
-                    },
-                    "contact": {
-                        "phone": phone,
-                        "email": email,
-                        "github": github,
-                        "linkedin": linkedin
-                    },
-                    "about": {
-                        "summary": summary,
-                        "skill_tags": skill_tags
-                    },
-                    "work_experience": work_experience,
-                    "education": education,
-                    "expertise": {
-                        "experience": experience,
-                        "programming_language": programming_language,
-                        "development_tools": development_tools
-                    },
-                    "courses": courses,
-                    "languages": languages
-                }
-                st.json(updated_data)
-                st.success("Changes saved successfully!")
+def validate_pdf(file_path):
+    """Validate the uploaded PDF file to ensure it's a valid and readable PDF."""
+    try:
+        with open(file_path, "rb") as file:
+            reader = PdfReader(file)
+            if len(reader.pages) == 0:
+                return False
+        return True
+    except Exception as e:
+        st.error(f"PDF validation failed: {e}")
+        return False
 
 # Streamlit app title
-st.title("Resume Converter")
+st.title("Batch PDF Embedding Saver")
 
-# Resume Conversion and Database Storage
-st.header("Resume Conversion and Database Storage")
+# Sidebar for Model Selection
+st.sidebar.title("Settings")
+selected_model = st.sidebar.selectbox("Select Model", ["gpt-3.5-turbo-0125", "gpt-4", "gemini-pro"], index=0)
+embedding_service = st.sidebar.selectbox("Select Embedding Service", ["OpenAI"], index=0)
+st.sidebar.write(f"Selected Model: {selected_model}")
+st.sidebar.write(f"Selected Embedding Service: {embedding_service}")
 
-# Resume Upload Section
-resume_uploaded = st.file_uploader("Upload a Resume (PDF only)", type=["pdf"])
-if resume_uploaded:
-    # Using a temporary file to store the uploaded file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        tmp_file.write(resume_uploaded.read())
-        file_path = tmp_file.name
-    
-    # Load and process the document using Langchain's PDFMinerLoader
-    documents = langchain_document_loader(file_path)
-    
-    if documents:
-        st.write("Extracted documents:")
-        for i, doc in enumerate(documents):
-            st.write(f"Document {i+1}:")
-            st.text_area(f"Content {i+1}", value=doc.page_content, height=150)
-            st.write(doc.metadata)
-    
-    st.write("You can now edit the extracted information in the form below:")
-    # Dummy data for the form based on extracted content
-    sample_json = {
-        "personalInformation": {"first_name": "John", "last_name": "Doe", "job_title": "Software Engineer", "birth_date": "1990-01-01"},
-        "contact": {"phone": "+1234567890", "email": "john.doe@example.com", "github": "github.com/johndoe", "linkedin": "linkedin.com/in/johndoe"},
-        "about": {"summary": "Experienced software engineer with a passion for AI.", "skill_tags": ["Python", "Machine Learning", "Web Development"]},
-        "work_experience": [
-            {
-                "company": "Tech Corp",
-                "location": {"country": "USA", "city": "San Francisco"},
-                "position": "Senior Developer",
-                "start_date": "2018-01-01",
-                "end_date": "Present",
-                "achievements": ["Led a team of 5 developers", "Increased code efficiency by 30%"],
-                "role_description": "Developing and maintaining web applications",
-                "tools": ["Python", "Django", "React"]
-            }
-        ],
-        "education": [
-            {
-                "institution": "University of Technology",
-                "end_date": "2015-05-30",
-                "location": {"country": "USA", "city": "New York"},
-                "program": "Bachelor of Science in Computer Science"
-            }
-        ],
-        "expertise": {
-            "experience": [{"name": "Web Development", "proficiency": "Expert"}],
-            "programming_language": [{"name": "Python", "proficiency": "Expert"}],
-            "development_tools": [{"name": "Git", "proficiency": "Advanced"}]
-        },
-        "courses": [{"institution": "Coursera", "end_date": "2020-12-15", "title": "Machine Learning"}],
-        "languages": [{"name": "English", "proficiency": "Native"}, {"name": "Spanish", "proficiency": "Intermediate"}]
-    }
-    create_form(sample_json)
+# Folder Selection
+st.header("Select Folder Containing PDFs")
+folder_path = st.text_input("Enter the folder path:", "")
+
+# Function to list PDF files in a folder
+def list_pdfs(folder_path):
+    pdf_files = [f for f in os.listdir(folder_path) if f.endswith('.pdf')]
+    return pdf_files
+
+# Display PDF List and Selection
+if folder_path:
+    if os.path.isdir(folder_path):
+        pdf_files = list_pdfs(folder_path)
+        if pdf_files:
+            st.write("Found the following PDF files:")
+            # To keep track of files to delete
+            files_to_delete = []
+            for i, pdf_file in enumerate(pdf_files):
+                col1, col2 = st.columns([0.9, 0.1])
+                with col1:
+                    st.write(pdf_file)
+                with col2:
+                    if st.button("❌", key=f"delete_{i}"):
+                        files_to_delete.append(pdf_file)
+            
+            # Remove selected files
+            for file in files_to_delete:
+                pdf_files.remove(file)
+                st.warning(f"Removed {file} from the list.")
+
+            if not pdf_files:
+                st.info("No PDF files selected.")
+        else:
+            st.info("No PDF files found in the selected folder.")
+
+        # Save button to store selected PDFs into the vector store
+        if pdf_files and st.button("Save Selected Embeddings"):
+            all_documents = []
+            for pdf_file in pdf_files:
+                file_path = os.path.join(folder_path, pdf_file)
+                
+                # Validate PDF
+                if validate_pdf(file_path):
+                    # Load documents from each valid PDF
+                    documents = langchain_document_loader(file_path)
+                    
+                    # Assign a unique group ID to each document set (all chunks from the same PDF)
+                    group_id = str(uuid.uuid4())  # Generate a unique ID for each PDF
+
+                    # Add group metadata to each chunk
+                    for doc in documents:
+                        doc.metadata["group_id"] = group_id
+                        doc.metadata["source_file"] = pdf_file  # Include source file name for reference
+
+                    all_documents.extend(documents)
+                else:
+                    st.error(f"{pdf_file} is not a valid PDF.")
+
+            # Save all selected embeddings to vector store
+            if all_documents:
+                embeddings = select_embeddings_model(LLM_service=embedding_service)
+                vector_store = create_vectorstore(embeddings, all_documents)
+                vector_store.save_local("/Users/sahillakhe/repositories/db/faiss_index")
+                st.success("Embeddings created and stored in the vector database successfully.")
+            else:
+                st.error("No valid documents were loaded to save.")
+    else:
+        st.error("The provided path is not a valid directory. Please enter a valid folder path.")

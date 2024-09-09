@@ -1,0 +1,9 @@
+streamlit
+langchain-openai
+langchain-community
+python-dotenv
+ftfy
+PyPDF2
+pdfminer
+cohere
+faiss-cpu
