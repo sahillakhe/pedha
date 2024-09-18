@@ -5,7 +5,7 @@ from modules.vectorstore_query import load_vectorstore, query_vectorstore
 from modules.cohere_rerank import CohereRerank_retriever
 
 # Load existing environment variables from .env file
-env_path = find_dotenv('keys.env', usecwd=True)
+env_path = find_dotenv('/Users/sahillakhe/repositories/secrets/keys.env', usecwd=True)
 load_dotenv(env_path)
 
 # Load API keys
