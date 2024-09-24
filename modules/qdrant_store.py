@@ -1,13 +1,15 @@
 import os
 import glob
-import re
 import json
+import time
+import openai
+from openai import OpenAI
+
+
 from pdfminer.high_level import extract_text
 from docx import Document
-import spacy
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Qdrant
-from langchain_core.documents import Document as LCDocument
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import VectorParams, Distance
 from dotenv import load_dotenv
@@ -17,13 +19,10 @@ load_dotenv('/Users/sahillakhe/repositories/secrets/keys.env')
 
 # Set OpenAI API key
 OPENAI_API_KEY = os.getenv('api_key_openai')
-
+client = OpenAI(api_key=OPENAI_API_KEY)
 # Verify that the API key is loaded
 if not OPENAI_API_KEY:
-    raise ValueError("OpenAI API key not found. Please set OPENAI_API_KEY in keys.env file.")
-
-# Load spaCy model for NLP tasks
-nlp = spacy.load('en_core_web_sm')
+    raise ValueError("OpenAI API key not found. Please set api_key_openai in keys.env file.")
 
 # Function to extract text from PDF files
 def extract_text_from_pdf(pdf_path):
@@ -36,102 +35,142 @@ def extract_text_from_docx(docx_path):
     text = '\n'.join([para.text for para in doc.paragraphs])
     return text
 
-# Function to parse resume text into structured JSON format
-def parse_resume(text):
-    # Initialize the structured data dictionary according to the schema
-    structured_data = {
-        "personalInformation": {
-            "first_name": "",
-            "last_name": "",
-            "job_title": "",
-            "birth_date": ""
-        },
-        "contact": {
-            "phone": "",
-            "email": "",
-            "github": "",
-            "linkedin": ""
-        },
-        "about": {
-            "summary": "",
-            "skill_tags": []
-        },
-        "work_experience": [],
-        "education": [],
-        "expertise": {
-            "experience": [],
-            "programming_language": [],
-            "development_tools": []
-        },
-        "courses": [],
-        "languages": []
+# Function to parse resume text using OpenAI API
+def parse_resume_with_openai(text):
+    # Define the schema as a string to include in the prompt
+    schema = """
+    {
+      "personalInformation": {
+        "first_name": "string",
+        "last_name": "string",
+        "job_title": "string",
+        "birth_date": "yyyy-mm-dd"
+      },
+      "contact": {
+        "phone": "string",
+        "email": "string",
+        "github": "string",
+        "linkedin": "string"
+      },
+      "about": {
+        "summary": "string",
+        "skill_tags": [
+          "string", "string"
+        ]
+      },
+      "work_experience": [
+        {
+          "company": "string",
+          "location": {"country": "string", "city": "string"},
+          "position": "string",
+          "start_date": "string",
+          "end_date": "string",
+          "achievements": ["string"],
+          "role_description": "string",
+          "tools": ["string"]
+        }
+      ],
+      "education": [
+        {
+          "institution": "string",
+          "end_date": "yyyy-mm-dd",
+          "location": {"country": "string", "city": "string"},
+          "program": "string"
+        }
+      ],
+      "expertise": {
+        "experience": [
+          {
+            "name": "string",
+            "proficiency": "string"
+          }
+        ],
+        "programming_language": [
+          {
+            "name": "string",
+            "proficiency": "string"
+          }
+        ],
+        "development_tools": [
+          {
+            "name": "string",
+            "proficiency": "string"
+          }
+        ]
+      },
+      "courses": [{"institution": "string", "end_date": "yyyy-mm-dd", "title": "string"}],
+      "languages": [{"name": "string", "proficiency": "string"}]
     }
+    """
 
-    doc = nlp(text)
+    # Craft the prompt
+    prompt = f"""
+You are a professional resume parser. Your task is to extract information from the provided resume text and output a JSON object following the given schema.
 
-    # Extract names
-    for ent in doc.ents:
-        if ent.label_ == 'PERSON':
-            names = ent.text.split()
-            if len(names) >= 2:
-                structured_data['personalInformation']['first_name'] = names[0]
-                structured_data['personalInformation']['last_name'] = ' '.join(names[1:])
-            else:
-                structured_data['personalInformation']['first_name'] = names[0]
-            break  # Assuming the first PERSON entity is the candidate's name
+First, clean and preprocess the text to ensure it is properly formatted and makes contextual sense.
 
-    # Extract email
-    email_match = re.search(r'[\w\.-]+@[\w\.-]+', text)
-    if email_match:
-        structured_data['contact']['email'] = email_match.group(0)
+Then, extract the relevant information and populate the JSON object accordingly. If certain fields are missing in the resume, you can leave them empty or as null.
 
-    # Extract phone number
-    phone_match = re.search(r'(\+\d{1,3}\s)?\(?\d{2,4}\)?[\s.-]?\d{3,4}[\s.-]?\d{4}', text)
-    if phone_match:
-        structured_data['contact']['phone'] = phone_match.group(0)
+Ensure that dates are in the format "yyyy-mm-dd" and all strings are properly escaped.
+Please make sure to return only the json, it cannot have any characters before ot after the josn, this is very important also please remove the Assistant: ```json on the beggining and the ``` in the end
 
-    # Extract LinkedIn URL
-    linkedin_match = re.search(r'(https?://)?(www\.)?linkedin\.com/in/[\w\-/]+', text)
-    if linkedin_match:
-        structured_data['contact']['linkedin'] = linkedin_match.group(0)
+Schema:
+{schema}
 
-    # Extract GitHub URL
-    github_match = re.search(r'(https?://)?(www\.)?github\.com/[\w\-/]+', text)
-    if github_match:
-        structured_data['contact']['github'] = github_match.group(0)
+Resume Text:
+\"\"\"
+{text}
+\"\"\"
 
-    # Extract skills (assuming they are listed under 'Skills' section)
-    skill_tags = []
-    skills_section = re.findall(r'(Skills|Technical Skills|Expertise)\s*[:\-–]?\s*((?:\w+(?:,|\s))+)', text, re.IGNORECASE)
-    if skills_section:
-        skills_text = skills_section[0][1]
-        skill_tags = [skill.strip() for skill in re.split(r',|\n', skills_text) if skill.strip()]
-        structured_data['about']['skill_tags'] = skill_tags
+Output:
+"""
 
-    # Extract summary (assuming it's the first paragraph)
-    summary = text.strip().split('\n')[0]
-    structured_data['about']['summary'] = summary
-
-    # Additional parsing can be added here for work_experience, education, etc.
-
-    return structured_data
+    # Call the OpenAI API
+    try:
+        response = client.chat.completions.create(model='gpt-3.5-turbo',  # Use 'gpt-4' if you have access
+        messages=[
+            {"role": "system", "content": "You are an assistant that parses resumes into structured JSON data."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0)  # Set temperature to 0 for deterministic output
+        # Extract the assistant's reply
+        reply = response.choices[0].message.content.strip()
+        # Load the reply as JSON
+        structured_data = json.loads(reply)
+        return structured_data
+    except openai.OpenAIError as e:
+        print(f"OpenAI API error: {e}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"JSON decoding error: {e}")
+        print(f"Assistant's reply: {reply}")
+        return None
+    finally:
+        print("Completed OpenAI API call.")
 
 # Initialize OpenAI embeddings
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
 # Connect to the locally hosted Qdrant instance
 qdrant_client = QdrantClient(
-    host='localhost',  # Change if your Qdrant host is different
-    port=6333
+    host='localhost',  # Update if different
+    port=6333          # Update if different
 )
 
 # Define collection parameters
 collection_name = 'resumes'
-vector_size = 1536  # Embedding size for OpenAI embeddings (e.g., 'text-embedding-ada-002')
+vector_size = 1536  # Embedding size for OpenAI embeddings
 distance_metric = Distance.COSINE
 
-# Create or recreate the collection in Qdrant
-qdrant_client.recreate_collection(
+# Check if the collection exists and delete it if it does
+collections = qdrant_client.get_collections().collections
+collection_names = [col.name for col in collections]
+
+if collection_name in collection_names:
+    qdrant_client.delete_collection(collection_name)
+
+# Create the collection
+qdrant_client.create_collection(
     collection_name=collection_name,
     vectors_config=VectorParams(size=vector_size, distance=distance_metric)
 )
@@ -155,18 +194,28 @@ for resume_file in resume_files:
     elif file_extension == '.docx':
         text = extract_text_from_docx(resume_file)
     else:
+        print(f"Skipping unsupported file type: {resume_file}")
         continue  # Skip unsupported file types
 
-    # Parse the resume text into structured data
-    structured_data = parse_resume(text)
+    # Parse the resume text into structured data using OpenAI API
+    structured_data = parse_resume_with_openai(text)
+    if not structured_data:
+        print(f"Failed to parse resume: {resume_file}")
+        continue
 
-    # Create a LangChain Document with the text and metadata
-    doc = LCDocument(
-        page_content=text,
-        metadata=structured_data
-    )
+    # Create a document with the text and metadata
+    doc = {
+        'page_content': text,
+        'metadata': structured_data
+    }
 
     # Add the document to the Qdrant vector store
-    vectorstore.add_documents([doc])
+    vectorstore.add_texts(
+        texts=[doc['page_content']],
+        metadatas=[doc['metadata']]
+    )
+
+    # Respect OpenAI's rate limits
+    time.sleep(1)  # Adjust sleep time as needed
 
 print("Resumes have been successfully processed and stored in Qdrant.")
