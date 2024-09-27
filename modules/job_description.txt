@@ -1,0 +1,24 @@
+VCC Assignment
+ 
+Description:
+We design, develop, and deliver software for both our inhouse and the supplier part of the control modules.
+You and your skills
+We are now looking for an engineer with experience of product development in automotive industry. You as a software developer define and maintain the software architecture of the product, as well as are responsible for the developing and securing quality assured SW to the vehicle.
+We also expect you to be on top of technology evolution and provide new ideas to continuously improve the product and our processes. You are someone who can manage tasks independent and drive issues with energy and transparent in reporting status of the area, manage cross functional contacts. Your focus is on software development and making sure our customers get the best possible system with regards to functionality and quality
+Do you fit the profile?
+• Atleast 5 years of experience in software development (C++ or C)
+• Experience in QNX is preferred but not mandatory.
+• Experience in Embedded Linux Development preferred but not mandatory.
+• Experience in working with Continuous Integration and Automatic testing preferred but not mandatory.
+• Knowledge of automotive industry standard software development practices.
+• Knowledge in Google Test or similar.
+• Experience in Git and Gerrit or other version control system tools.
+• Experience in Matlab Simulink is beneficial.
+• Good English skill is mandatory. (written and spoken)
+Personal behaviors
+Flexible
+Self-driven
+Reliable
+Structured
+Strong team player
+Performance driven
