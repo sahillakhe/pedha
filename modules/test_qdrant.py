@@ -2,8 +2,10 @@ import os
 import sys
 import argparse
 import json
+# from langchain_community.embeddings import OpenAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Qdrant
+# from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from dotenv import load_dotenv
 
@@ -15,7 +17,7 @@ OPENAI_API_KEY = os.getenv('api_key_openai')
 
 # Verify that the API key is loaded
 if not OPENAI_API_KEY:
-    raise ValueError("OpenAI API key not found. Please set OPENAI_API_KEY in keys.env file.")
+    raise ValueError("OpenAI API key not found. Please set api_key_openai in keys.env file.")
 
 # Initialize OpenAI embeddings
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
@@ -30,10 +32,10 @@ qdrant_client = QdrantClient(
 collection_name = 'resumes'
 
 # Initialize the Qdrant vector store with LangChain
-vectorstore = Qdrant(
+vectorstore = QdrantVectorStore(
     client=qdrant_client,
     collection_name=collection_name,
-    embeddings=embeddings,
+    embedding=embeddings,
 )
 
 # Parse command-line arguments
@@ -49,12 +51,14 @@ if not search_query:
     print("Please provide a search query.")
     sys.exit(1)
 
-# Perform a similarity search
-results = vectorstore.similarity_search(query=search_query, k=args.k)
+# Perform a similarity search with scores
+results = vectorstore.similarity_search_with_score(query=search_query, k=args.k)
 
 # Display the results
-for i, result in enumerate(results, 1):
+for i, (doc, score) in enumerate(results, 1):
+    filename = doc.metadata.get('filename', 'Unknown')
+    similarity = score * 100  # Convert distance to similarity if using cosine distance
     print(f"Result {i}:")
-    print(f"Content: {result.page_content[:200]}...")  # Print first 200 characters
-    print(f"Metadata: {json.dumps(result.metadata, indent=2)}")
+    print(f"Filename: {filename}")
+    print(f"Similarity Score: {similarity:.4f}%")
     print("-" * 50)

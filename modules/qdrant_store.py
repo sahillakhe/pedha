@@ -8,8 +8,8 @@ from openai import OpenAI
 
 from pdfminer.high_level import extract_text
 from docx import Document
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Qdrant
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import VectorParams, Distance
 from dotenv import load_dotenv
@@ -19,11 +19,13 @@ load_dotenv('/Users/sahillakhe/repositories/secrets/keys.env')
 
 # Set OpenAI API key
 OPENAI_API_KEY = os.getenv('api_key_openai')
-client = OpenAI(api_key=OPENAI_API_KEY)
+
 # Verify that the API key is loaded
 if not OPENAI_API_KEY:
     raise ValueError("OpenAI API key not found. Please set api_key_openai in keys.env file.")
 
+
+client = OpenAI(api_key=OPENAI_API_KEY)
 # Function to extract text from PDF files
 def extract_text_from_pdf(pdf_path):
     text = extract_text(pdf_path)
@@ -112,7 +114,8 @@ First, clean and preprocess the text to ensure it is properly formatted and make
 Then, extract the relevant information and populate the JSON object accordingly. If certain fields are missing in the resume, you can leave them empty or as null.
 
 Ensure that dates are in the format "yyyy-mm-dd" and all strings are properly escaped.
-Please make sure to return only the json, it cannot have any characters before ot after the josn, this is very important also please remove the Assistant: ```json on the beggining and the ``` in the end
+
+Please make sure to return only the JSON; it cannot have any characters before or after the JSON. This is very important. Also, please remove any code blocks like ```json at the beginning and ``` at the end.
 
 Schema:
 {schema}
@@ -132,7 +135,7 @@ Output:
             {"role": "system", "content": "You are an assistant that parses resumes into structured JSON data."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0)  # Set temperature to 0 for deterministic output
+        temperature=0 ) # Set temperature to 0 for deterministic output)
         # Extract the assistant's reply
         reply = response.choices[0].message.content.strip()
         # Load the reply as JSON
@@ -202,6 +205,9 @@ for resume_file in resume_files:
     if not structured_data:
         print(f"Failed to parse resume: {resume_file}")
         continue
+
+    # Add the filename to the metadata
+    structured_data['filename'] = os.path.basename(resume_file)
 
     # Create a document with the text and metadata
     doc = {
