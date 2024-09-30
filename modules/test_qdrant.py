@@ -4,7 +4,7 @@ import sys
 import argparse
 import json
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -21,8 +21,8 @@ OPENAI_API_KEY = os.getenv('api_key_openai')
 if not OPENAI_API_KEY:
     raise ValueError("OpenAI API key not found. Please set api_key_openai in keys.env file.")
 
-
 client = OpenAI(api_key=OPENAI_API_KEY)
+
 # Initialize OpenAI embeddings
 embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
 
@@ -36,10 +36,10 @@ qdrant_client = QdrantClient(
 collection_name = 'resumes'
 
 # Initialize the Qdrant vector store with LangChain
-vectorstore = Qdrant(
+vectorstore = QdrantVectorStore(
     client=qdrant_client,
     collection_name=collection_name,
-    embeddings=embeddings,
+    embedding=embeddings,
 )
 
 # Parse command-line arguments
@@ -63,17 +63,19 @@ if not job_description.strip():
 # Generate embedding for the job description
 job_description_embedding = embeddings.embed_query(job_description)
 
-# Perform a similarity search with scores
-results_with_scores = vectorstore.similarity_search_with_score_by_vector(
-    job_description_embedding, k=args.k
+# QdrantVectorStore.similarity_search_with_score
+# Perform a similarity search with scores using the embedding vector
+results_with_scores = vectorstore.similarity_search_with_score(
+    job_description, k=args.k
 )
 
+type(results_with_scores)
 print("Top candidates for the job description:")
 for i, (doc, score) in enumerate(results_with_scores, 1):
     filename = doc.metadata.get('filename', 'Unknown')
-    similarity = score  # Convert cosine distance to similarity
+    similarity = score * 100  # Convert cosine distance to similarity
     # Limit the resume content to avoid exceeding token limits
-    candidate_resume_excerpt = doc.page_content[:2000]
+    candidate_resume_excerpt = doc.page_content[:3000]
 
     # Construct the prompt for the LLM
     prompt = f"""
