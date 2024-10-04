@@ -1,3 +1,4 @@
+# qdrant_store.py
 import os
 import glob
 import json
@@ -8,8 +9,8 @@ from openai import OpenAI
 
 from pdfminer.high_level import extract_text
 from docx import Document
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import Qdrant
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Qdrant
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import VectorParams, Distance
 from dotenv import load_dotenv

@@ -67,22 +67,22 @@ schema = """
 """
 
 # Craft the prompt
-prompt = f"""
-You are a professional resume parser. Your task is to extract information from the provided resume text and output a JSON object following the given schema.
+# prompt = f"""
+# You are a professional resume parser. Your task is to extract information from the provided resume text and output a JSON object following the given schema.
 
-First, clean and preprocess the text to ensure it is properly formatted and makes contextual sense.
+# First, clean and preprocess the text to ensure it is properly formatted and makes contextual sense.
 
-Then, extract the relevant information and populate the JSON object accordingly. If certain fields are missing in the resume, you can leave them empty or as null.
+# Then, extract the relevant information and populate the JSON object accordingly. If certain fields are missing in the resume, you can leave them empty or as null.
 
-Ensure that dates are in the format "yyyy-mm-dd" and all strings are properly escaped.
+# Ensure that dates are in the format "yyyy-mm-dd" and all strings are properly escaped.
 
-Schema:
-{schema}
+# Schema:
+# {schema}
 
-Resume Text:
-\"\"\"
-{text}
-\"\"\"
+# Resume Text:
+# \"\"\"
+# {text}
+# \"\"\"
 
-Output:
-"""
+# Output:
+# """
