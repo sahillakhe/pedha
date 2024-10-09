@@ -47,25 +47,10 @@ def list_documents(folder_path):
 if folder_path:
     if os.path.isdir(folder_path):
         supported_files = list_documents(folder_path)
-        if supported_files:
-            st.write("Found the following PDF files:")
-            # To keep track of files to delete
-            files_to_delete = []
-            for i, file in enumerate(supported_files):
-                col1, col2 = st.columns([0.9, 0.1])
-                with col1:
-                    st.success(file)
-                # with col2:
-                #     if st.button("❌", key=f"delete_{i}"):
-
-                #         files_to_delete.append(file)
-            
-            # Remove selected files
-            # for file in files_to_delete:
-            #     supported_files.remove(file)
-            #     st.success(f"Removed {file} from the list.")
-
         
+        if supported_files:
+            st.write(f" {len(supported_files)} resumes found in the selected folder") 
+
         else:
             st.info("No supported files found in the selected folder.")
         
@@ -75,52 +60,40 @@ if folder_path:
             faiss_path=faiss_path,
         )
         uuids = [str(uuid4()) for _ in range(len(supported_files))]
-        i=0
-        for file in supported_files:
-            if(i > 2):
-                break
-            file_path = os.path.join(folder_path, file)
-            extracted_file = extract_text_from_pdf(file_path)
-            structured_data = parse_resume_with_openai(extracted_file)
-            
-            if not structured_data:
-                print(f"Failed to parse resume: {file}")
-                continue
+        progress_text = "Uploading Resumes to database ..." 
+        my_bar = st.progress(0, text=progress_text)
 
-            # Add the filename to the metadata
-            structured_data['filename'] = os.path.basename(file)
-            print(type(structured_data    ))
-            # Create a document with the text and metadata
-            vector_file = {
-                'page_content': extracted_file,
-                'metadata': structured_data,
-            }
-            st.write(vector_file)
-            save_to_vectorstore(vector_file)
-            i+=1
-            st.divider()
+        number_of_files = len(supported_files)
+        my_bar.progress(0, text=progress_text)
+        for file in supported_files:
+            file_name = os.path.basename(file)
+
+            print(progress_text)
+            file_path = os.path.join(folder_path, file)
+            vectorDocument = process_document(file_path)
+            # extracted_file = extract_text_from_pdf(file_path)
+            # structured_data = parse_resume_with_openai(extracted_file)
+            
+            # if not structured_data:
+            #     print(f"Failed to parse resume: {file}")
+            #     continue
+            
+            # # Add the filename to the metadata
+            # structured_data['filename'] = file_name
+            # # Create a document with the text and metadata
+            # vector_file = {
+            #     'page_content': extracted_file,
+            #     'metadata': structured_data,
+            # }
+            save_to_vectorstore(vectorDocument)
+            progress_text = f"Processing {file_name} ..."
+            my_bar.empty()
+            my_bar.progress((supported_files.index(file) + 1) / number_of_files, text=progress_text)
+            if(supported_files.index(file) + 1 == number_of_files):
+                my_bar.empty()
+                st.write("All resumes uploaded successfully")
         
 
-        # vector_store = initialize_vectorstore(
-        #     store_type=vector_store_type,
-        #     openai_api_key=openai_api_key,
-        #     faiss_path=faiss_path,
-        #     qdrant_config=qdrant_config
-        # )
-        # # Save button to store selected PDFs into the vector store
-        # if supported_files and st.button("Save Selected Embeddings"):
 
-        #     uuids = [str(uuid4()) for _ in range(len(supported_files))]
-        #     for doc in supported_files:
-        #         file_path = os.path.join(folder_path, doc)
-        #         st.write(file_path)
-        #     # Process documents one by one
-        #         vector_document = process_document(file_path)
-        #         if vector_store and vector_document:
-        #             save_to_vectorstore(vector_document,uuid)
-                    
-                
-        #         else:
-        #             st.error(f"Failed to initialize the {vector_store_type} vector store.")
     else:
         st.error("The provided path is not a valid directory. Please enter a valid folder path.")

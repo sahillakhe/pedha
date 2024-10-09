@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from tokenize import String
 from openai import OpenAI
 
 
@@ -72,9 +73,9 @@ Output:
         ],
         temperature=0)
 
-        reply = response.choices[0].message.content.strip()
-        structured_data = json.loads(reply)
-        return structured_data
+        structured_data_in_string = response.choices[0].message.content.strip()
+        # structured_data_in_string = json.loads(reply)
+        return structured_data_in_string
 
     except openai.OpenAIError as e:
         st.error(f"OpenAI API error: {e}")
@@ -86,51 +87,45 @@ Output:
         time.sleep(1)  # Respect OpenAI rate limits
 
 # Function to create embeddings for the extracted text
-def generate_embeddings(text):
-    """Generates embeddings for a given text using OpenAI API"""
-    try:
-        embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
-        return embeddings.embed_query(text)
-    except Exception as e:
-        st.error(f"Failed to generate embeddings: {e}")
-        return None
+# def generate_embeddings(text):
+#     """Generates embeddings for a given text using OpenAI API"""
+#     try:
+#         embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
+#         return embeddings.embed_query(text)
+#     except Exception as e:
+#         st.error(f"Failed to generate embeddings: {e}")
+#         return None
 
 # Unified function to process documents and return parsed data and embeddings
-def process_document(doc):
+def process_document(file_path):
     """Process a single document, extract text, parse resumes, and generate embeddings."""
 
     # Extract text from PDF or DOCX
-    if doc.endswith('.pdf'):
-        text = extract_text_from_pdf(doc)
-    elif doc.endswith('.docx'):
-        text = extract_text_from_docx(doc)
+    if file_path.endswith('.pdf'):
+        text = extract_text_from_pdf(file_path)
+    elif file_path.endswith('.docx'):
+        text = extract_text_from_docx(file_path)
     else:
-        st.error(f"Unsupported file type: {doc}")
+        st.error(f"Unsupported file type: {file_path}")
 
 
     # If text was extracted successfully, parse the resume and generate embeddings
     if text:
         # Parse the resume text into structured data using OpenAI API
-        structured_data = parse_resume_with_openai(text)
-        if not structured_data:
-            print(f"Failed to parse resume: {doc}")
+        structured_data_in_string = parse_resume_with_openai(text)
+        if not structured_data_in_string:
+            print(f"Failed to parse resume: {file_path}")
 
         # Add the filename to the metadata
-        structured_data['filename'] = os.path.basename(doc)
+        metadata = {'filename': file_path}
 
-        # Create a document with the text and metadata
-        # vector_document = vectorDocument(
-        #     page_content=text,
-        #     metadata=structured_data
-        # )
-        doc = {
-        'page_content': structured_data,
-        'metadata': structured_data['filename']
+        vectorDocument = {
+        'page_content': structured_data_in_string,
+        'metadata': metadata
         }
-        print(doc)
-        return doc
+        return vectorDocument
     else:
-        st.error(f"Failed to parse resume: {doc}")
+        st.error(f"Failed to parse resume: {file_path}")
         return None
 
 

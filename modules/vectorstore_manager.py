@@ -84,7 +84,7 @@ def save_to_vectorstore(documents):
                 metadatas=[documents['metadata']]
             )
             vector_store.save_local(st.session_state['store_path'])
-            st.success("Document saved to FAISS vector store successfully.")
+            # st.success("Document saved to FAISS vector store successfully.")
         except Exception as e:
             st.error(f"Failed to save documents to FAISS vector store: {e}")
 
@@ -99,6 +99,6 @@ def save_to_vectorstore(documents):
             # Respect OpenAI's rate limits
             time.sleep(1) 
   
-            st.success(f"{documents['metadata']['filename']} saved to Qdrant vector store successfully.")
+            # st.success(f"{documents['metadata']['filename']} saved to Qdrant vector store successfully.")
         except Exception as e:
             st.error(f"Failed to save documents to Qdrant vector store: {e}")
