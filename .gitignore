@@ -1,1 +1,110 @@
 .consultantHR
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Flutter/Dart related files
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.dart_tool/
+.flutter/
+.idea/
+.vscode/
+.macos/
+windows/
+ios/
+android/
+
+# Other common files to ignore
+*.iml
+*.log
+*.lock
+*.tmp
+*.swp
+*.DS_Store
+*.class
+*.project
+*.pyc
+*.pyo
+*.idx
+*.gz
+*.dart.js
+*.dart.js.deps
+*.dart.js.map
+*.dart.js.tar.gz
+
+# macOS specific files
+*.DS_Store
+*.localized
+.AppleDouble
+.LSOverride
+Icon
+# Thumbnails
+._*
+# Files that might appear when mounting DMG files
+.Spotlight-V100
+.Trashes
+*.swp
+*.lock
+.DS_Store
+.idea
+
+# Windows specific files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# VS Code specific
+.vscode/
+
+pedhaaap/build/
