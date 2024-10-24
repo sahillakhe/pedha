@@ -11,7 +11,7 @@ from docx import Document
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 from modules.global_variables import schema
-from langchain_core.documents import Document as vectorDocument
+from langchain.document_loaders import UnstructuredWordDocumentLoader
 import streamlit as st
 
 
@@ -35,11 +35,19 @@ def extract_text_from_pdf(pdf_path):
         st.error(f"Failed to extract text from PDF: {e}")
         return None
 
-# Function to extract text from DOCX
-def extract_text_from_docx(docx_path):
+import pikepdf
+
+# Function to extract text from password-protected DOCX using Langchain UnstructuredWordDocumentLoader
+def extract_text_from_docx(docx_path, password=None):
     try:
-        doc = Document(docx_path)
-        text = '\n'.join([para.text for para in doc.paragraphs])
+        # Decrypt PDF if a password is provided
+        if password:
+            with pikepdf.open(docx_path, password=password) as pdf:
+                pdf.save(docx_path)
+        
+        loader = UnstructuredWordDocumentLoader(docx_path)
+        documents = loader.load()
+        text = "\n".join([doc.page_content for doc in documents])
         return text
     except Exception as e:
         st.error(f"Failed to extract text from DOCX: {e}")
