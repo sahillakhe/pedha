@@ -11,7 +11,7 @@ from docx import Document
 from langchain_openai import OpenAIEmbeddings
 from dotenv import load_dotenv
 from modules.global_variables import schema
-from langchain.document_loaders import UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import UnstructuredWordDocumentLoader
 import streamlit as st
 
 
@@ -44,7 +44,7 @@ def extract_text_from_docx(docx_path, password=None):
         if password:
             with pikepdf.open(docx_path, password=password) as pdf:
                 pdf.save(docx_path)
-        
+
         loader = UnstructuredWordDocumentLoader(docx_path)
         documents = loader.load()
         text = "\n".join([doc.page_content for doc in documents])

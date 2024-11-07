@@ -1,10 +1,11 @@
 streamlit
-
+pikepdf
 uuid
 pdfminer.six
 python-docx
 langchain-openai
 langchain-community
+langchain_qdrant
 qdrant-client
 python-dotenv
 openai

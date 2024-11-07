@@ -8,8 +8,7 @@ from langchain_openai import OpenAIEmbeddings
 import os
 
 
-# ToDo: Make it flexible to choose between different datastores
-# Load environment variables from keys.env
+
 load_dotenv(find_dotenv('/Users/sahillakhe/repositories/secrets/keys.env', usecwd=True))
 
 # Load API keys
