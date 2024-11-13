@@ -1,5 +1,9 @@
 import streamlit as st
-from modules.llm_functions import load_api_keys, save_api_key
+from modules.llm_functions import load_api_keys, save_api_key, get_stored_env_path, save_env_path
+
+# Initialize session state for env_path if not exists
+if 'env_path' not in st.session_state:
+    st.session_state.env_path = get_stored_env_path()
 
 # Sidebar for configuration
 st.sidebar.title("Configuration")
@@ -7,12 +11,17 @@ st.sidebar.title("Configuration")
 # Input field for .env file path
 env_path_input = st.sidebar.text_input(
     "Path to folder for secret keys",
-    value="",
+    value=st.session_state.env_path if st.session_state.env_path else "",
     help="You will need to enter your OpenAI keys in the next field. Enter the path for a folder of your choosing where to save"
 )
 
+# Update stored path if changed
+if env_path_input != st.session_state.env_path:
+    save_env_path(env_path_input)
+    st.session_state.env_path = env_path_input
+
 # Load API keys using the utility function
-openai_api_key = load_api_keys(env_path=env_path_input)
+openai_api_key = load_api_keys(env_path=st.session_state.env_path)
 
 # Set up the Streamlit app layout
 st.title("Consultancy Firm Hiring Tool")
@@ -47,5 +56,5 @@ openai_api_key_input = st.sidebar.text_input(
 # Save button to update .env file
 if st.sidebar.button("Save API Keys"):
     if openai_api_key_input:
-        save_api_key("api_key_openai", openai_api_key_input, env_path=env_path_input)
+        save_api_key("api_key_openai", openai_api_key_input, env_path=st.session_state.env_path)
     st.sidebar.success("API keys have been saved successfully.")

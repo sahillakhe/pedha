@@ -1,18 +1,14 @@
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 import streamlit as st
-from dotenv import load_dotenv, find_dotenv, set_key
 from modules.vectorstore_manager import initialize_vectorstore
 from openai import OpenAI
 from langchain_openai import OpenAIEmbeddings
 import os
+from modules.llm_functions import load_api_keys
 
-
-
-load_dotenv(find_dotenv('/Users/sahillakhe/repositories/secrets/keys.env', usecwd=True))
-
-# Load API keys
-openai_api_key = os.getenv("api_key_openai")
+# Load API keys using the utility function
+openai_api_key = load_api_keys()
 
 # Ensure the OpenAI API key is available
 if not openai_api_key:

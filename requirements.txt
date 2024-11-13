@@ -1,5 +1,6 @@
 streamlit
 pikepdf
+docx
 uuid
 pdfminer.six
 python-docx

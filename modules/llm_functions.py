@@ -2,6 +2,9 @@
 
 import os
 from dotenv import load_dotenv, find_dotenv, set_key
+import json
+
+CONFIG_FILE = "config.json"
 
 def load_api_keys(env_path=None):
     """Load API keys from the .env file and return them."""
@@ -34,3 +37,29 @@ def save_api_key(service, key, env_path=None):
             env_path = os.path.join(os.getcwd(), '.env')
             open(env_path, 'a').close()
         set_key(env_path, service, key)
+
+def get_stored_env_path():
+    """Retrieve the stored env path from config file."""
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+                return config.get('env_path', '')
+    except Exception as e:
+        print(f"Error reading config file: {e}")
+    return ''
+
+def save_env_path(env_path):
+    """Save the env path to config file."""
+    try:
+        config = {}
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as f:
+                config = json.load(f)
+        
+        config['env_path'] = env_path
+        
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f)
+    except Exception as e:
+        print(f"Error saving config file: {e}")
